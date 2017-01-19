@@ -2,6 +2,7 @@ import jupyter_core.paths as jpaths
 import glob
 import os
 import sys
+import re
 
 def valid_conf_file(file_name):
 # replace with canonical config validation checker
@@ -12,14 +13,12 @@ def valid_conf_file(file_name):
     if os.path.splitext(file_name)[1]=='.json':
         return True
     
-def valid_local_conf_file(file_path, canonical_names=None):
-    if canonical_names is None:
-        canonical_names = ["jupyter_config",
-                           "jupyter_notebook_config",
-                           "jupyter_nbconvert_config"]
 
+canonical_names_regex = re.compile(r"jupyter_(\w*_|)config")
+
+def valid_local_conf_file(file_path):
     file_name = os.path.splitext(os.path.split(file_path)[1])[0]
-    return valid_conf_file(file_path) and file_name in canonical_names
+    return valid_conf_file(file_path) and canonical_names_regex.match(file_name)
     
 def search_jupyter_paths(search_term=''):
     
@@ -36,12 +35,14 @@ def search_jupyter_paths(search_term=''):
     # if search term found in file
     # print name, line_no, content 
     conf_file_list.reverse()
-    for file in conf_file_list:
-        print_indexed_content(file=file, search_term=search_term)
+    for file_name in conf_file_list:
+        if len(search_term)>0:
+            print_indexed_content(file_name=file_name, search_term=search_term)
+        else:
+            print(file_name)
         
-        
-def print_indexed_content(file='', search_term=''):
-    with open(file,"r") as f:
+def print_indexed_content(file_name='', search_term=''):
+    with open(file_name,"r") as f:
         if search_term in f.read():
             f.seek(0)
             line_numbers_match = []
@@ -49,9 +50,15 @@ def print_indexed_content(file='', search_term=''):
                 if search_term in text:
                     line_numbers_match.append((line_no,text.strip()))
             output = ["{}: {}".format(x,y) for x,y in line_numbers_match]
-            print(file + "\n" + "\n".join(output),"\n")
+            print(file_name + "\n" + "\n".join(output),"\n")
 
+def main():
+    if len(sys.argv)==1:
+        search_jupyter_paths()
+    elif len(sys.argv)==2:
+        search_jupyter_paths(sys.argv[1])
+    else:
+        raise RuntimeError("You can only pass in a single string at this time.")
 
 if __name__ == "__main__":
-    search_jupyter_paths(sys.argv[1])
-
+    main()
